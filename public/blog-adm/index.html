@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Administração - Liberdade Médica</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-upload.css">
+    <link rel="stylesheet" href="styles-auth.css">
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🔐 Blog Administração</h1>
+                <p>Sistema de Gestão - Liberdade Médica</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="username">Usuário</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" id="loginBtn" class="login-btn">
+                    Entrar
+                </button>
+                
+                <div id="loginStatus" class="login-status"></div>
+            </form>
+            
+            <div class="login-footer">
+                <small>Acesso restrito aos administradores</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aplicação Principal -->
+    <div id="mainApp" class="main-app" style="display: none;">
+        <!-- Header da Aplicação -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>📝 Blog Administração</h1>
+                <div class="header-actions">
+                    <span id="userInfo" class="user-info"></span>
+                    <button id="logoutBtn" class="logout-btn">Sair</button>
+                </div>
+            </div>
+            
+            <!-- Indicador de Status da API -->
+            <div id="connectionStatus" class="status-indicator">
+                🔄 Verificando conexão...
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- Formulário Principal -->
+            <section class="form-section">
+                <h2>Informações do Artigo</h2>
+                
+                <div class="form-group">
+                    <label for="titulo">Título do Artigo *</label>
+                    <input type="text" id="titulo" placeholder="Digite o título do artigo" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="categoria">Categoria *</label>
+                        <select id="categoria" required>
+                            <option value="">Selecione uma categoria</option>
+                            <option value="Medicina Geral">Medicina Geral</option>
+                            <option value="Cardiologia">Cardiologia</option>
+                            <option value="Dermatologia">Dermatologia</option>
+                            <option value="Endocrinologia">Endocrinologia</option>
+                            <option value="Gastroenterologia">Gastroenterologia</option>
+                            <option value="Ginecologia">Ginecologia</option>
+                            <option value="Neurologia">Neurologia</option>
+                            <option value="Oftalmologia">Oftalmologia</option>
+                            <option value="Ortopedia">Ortopedia</option>
+                            <option value="Otorrinolaringologia">Otorrinolaringologia</option>
+                            <option value="Pediatria">Pediatria</option>
+                            <option value="Psiquiatria">Psiquiatria</option>
+                            <option value="Pneumologia">Pneumologia</option>
+                            <option value="Reumatologia">Reumatologia</option>
+                            <option value="Urologia">Urologia</option>
+                            <option value="Medicina de Emergência">Medicina de Emergência</option>
+                            <option value="Medicina Preventiva">Medicina Preventiva</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="autor">Autor *</label>
+                        <input type="text" id="autor" placeholder="Nome do autor" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="coautor">Co-autor</label>
+                        <input type="text" id="coautor" placeholder="Nome do co-autor (opcional)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destaque">Artigo em Destaque</label>
+                        <select id="destaque">
+                            <option value="false">Não</option>
+                            <option value="true">Sim</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="resumo">Resumo do Artigo</label>
+                    <textarea id="resumo" placeholder="Resumo do artigo (máximo 500 caracteres)" rows="3" maxlength="500"></textarea>
+                    <small class="char-count">Caracteres: <span id="resumoCount">0</span>/500</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="imagemPrincipal">Imagem Principal</label>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-content">
+                            <div class="upload-icon">📷</div>
+                            <p>Clique ou arraste uma imagem aqui</p>
+                            <small>Formatos: JPG, PNG, GIF (máx. 10MB)</small>
+                        </div>
+                        <input type="file" id="imagemPrincipal" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="imagemPreview" class="image-preview" style="display: none;">
+                        <img id="imagemPreviewImg" src="" alt="Preview">
+                        <button type="button" id="removeImage" class="remove-image">✕</button>
+                        <div class="image-info">
+                            <span id="imagemUrl"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção de Blocos de Conteúdo -->
+            <section class="content-section">
+                <h2>Conteúdo do Artigo</h2>
+                
+                <div class="content-form">
+                    <div class="form-group">
+                        <label for="conteudo">Conteúdo do Bloco</label>
+                        <textarea id="conteudo" placeholder="Digite o conteúdo deste bloco..." rows="4"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tipo">Tipo do Elemento</label>
+                            <select id="tipo">
+                                <option value="p">Parágrafo</option>
+                                <option value="h1">Título 1 (H1)</option>
+                                <option value="h2">Título 2 (H2)</option>
+                                <option value="h3">Título 3 (H3)</option>
+                                <option value="h4">Título 4 (H4)</option>
+                                <option value="h5">Título 5 (H5)</option>
+                                <option value="h6">Título 6 (H6)</option>
+                                <option value="image">Imagem</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="button" id="addBlock" class="btn btn-primary">
+                                Adicionar Bloco
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Upload de imagem para blocos -->
+                    <div id="blockImageUpload" class="form-group" style="display: none;">
+                        <label>Imagem do Bloco</label>
+                        <div class="upload-area" id="blockUploadArea">
+                            <div class="upload-content">
+                                <div class="upload-icon">🖼️</div>
+                                <p>Clique ou arraste uma imagem para o bloco</p>
+                                <small>Formatos: JPG, PNG, GIF (máx. 10MB)</small>
+                            </div>
+                            <input type="file" id="blockImage" accept="image/*" style="display: none;">
+                        </div>
+                        <div id="blockImagePreview" class="image-preview" style="display: none;">
+                            <img id="blockImagePreviewImg" src="" alt="Preview">
+                            <button type="button" id="removeBlockImage" class="remove-image">✕</button>
+                            <div class="image-info">
+                                <span id="blockImageUrl"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="help-text">
+                        <small>💡 Dica: Use Ctrl+Enter para adicionar o bloco rapidamente</small>
+                    </div>
+                </div>
+
+                <!-- Lista de Blocos -->
+                <div id="blocksList" class="blocks-list">
+                    <p class="text-gray-500">Nenhum bloco adicionado</p>
+                </div>
+            </section>
+
+            <!-- Seção de Preview -->
+            <section class="preview-section">
+                <h2>Preview do Artigo</h2>
+                <div id="preview" class="preview-content">
+                    <p class="text-gray-500">O preview aparecerá aqui conforme você adiciona conteúdo</p>
+                </div>
+            </section>
+
+            <!-- Seção de Ações -->
+            <section class="actions-section">
+                <div class="actions-grid">
+                    <button id="saveDraft" class="btn btn-secondary">
+                        💾 Salvar Rascunho
+                    </button>
+                    
+                    <button id="loadDraft" class="btn btn-secondary">
+                        📂 Carregar Rascunho
+                    </button>
+                    
+                    <button id="exportHtml" class="btn btn-secondary">
+                        📄 Exportar HTML
+                    </button>
+                    
+                    <button id="clearForm" class="btn btn-danger">
+                        🗑️ Limpar Tudo
+                    </button>
+                    
+                    <button id="publishArticle" class="btn btn-success">
+                        🚀 Publicar Artigo
+                    </button>
+                </div>
+            </section>
+
+            <!-- Seção de Artigos Recentes -->
+            <section class="articles-section">
+                <h2>Artigos Recentes</h2>
+                <div id="articlesList" class="articles-list">
+                    <p class="text-gray-500">Carregando artigos...</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Status Global -->
+    <div id="globalStatus" class="global-status"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

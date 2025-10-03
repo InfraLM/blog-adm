@@ -1,0 +1,42 @@
+{
+  "name": "blog-adm-web",
+  "version": "1.0.0",
+  "description": "Sistema de administração web para o Blog Liberdade Médica",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "build": "npm run build:static",
+    "build:static": "node scripts/build-static.js",
+    "test": "node test/test-server.js"
+  },
+  "keywords": [
+    "blog",
+    "admin",
+    "cms",
+    "web",
+    "nodejs",
+    "express"
+  ],
+  "author": "Liberdade Médica",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4",
+    "pg": "^8.11.3",
+    "aws-sdk": "^2.1490.0",
+    "multer": "^1.4.5-lts.1",
+    "dotenv": "^16.3.1",
+    "express-rate-limit": "^6.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
