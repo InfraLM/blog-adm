@@ -5,9 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:simple": "node src/server-simple.js",
     "start:postgresql": "node src/server-postgresql.js",
     "start:fallback": "node src/server-fallback.js",
     "dev": "nodemon src/server.js",
+    "dev:simple": "nodemon src/server-simple.js",
     "dev:postgresql": "nodemon src/server-postgresql.js",
     "dev:fallback": "nodemon src/server-fallback.js",
     "build": "npm run build:static",

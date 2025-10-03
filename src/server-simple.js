@@ -1,6 +1,5 @@
 const express = require('express');
 const session = require('express-session');
-const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -12,8 +11,8 @@ const multer = require('multer');
 const crypto = require('crypto');
 
 console.log('========================================');
-console.log(' BLOG ADMINISTRAÇÃO WEB - POSTGRESQL');
-console.log(' Conexão Prioritária com Banco');
+console.log(' BLOG ADMINISTRAÇÃO WEB - SIMPLES');
+console.log(' Conexão Direta PostgreSQL (SEM SSL)');
 console.log('========================================');
 console.log();
 
@@ -24,73 +23,19 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MÚLTIPLAS CONFIGURAÇÕES DE CONEXÃO POSTGRESQL (SEM SSL)
-const DB_CONFIGS = [
-  // Configuração 1: Direta com timeout longo
-  {
-    name: 'Conexão Direta (Timeout Longo)',
-    config: {
-      host: '35.199.101.38',
-      port: 5432,
-      database: 'liberdade-medica',
-      user: 'vinilean',
-      password: '-Infra55LM-',
-      ssl: false,
-      connectionTimeoutMillis: 30000,
-      query_timeout: 60000,
-      statement_timeout: 60000,
-      idle_in_transaction_session_timeout: 60000
-    }
-  },
-  // Configuração 2: Direta com timeout médio
-  {
-    name: 'Conexão Direta (Timeout Médio)',
-    config: {
-      host: '35.199.101.38',
-      port: 5432,
-      database: 'liberdade-medica',
-      user: 'vinilean',
-      password: '-Infra55LM-',
-      ssl: false,
-      connectionTimeoutMillis: 15000,
-      query_timeout: 30000,
-      statement_timeout: 30000,
-      idle_in_transaction_session_timeout: 30000
-    }
-  },
-  // Configuração 3: Túnel SSH local (se configurado)
-  {
-    name: 'Túnel SSH Local',
-    config: {
-      host: 'localhost',
-      port: 5433,
-      database: 'liberdade-medica',
-      user: 'vinilean',
-      password: '-Infra55LM-',
-      ssl: false,
-      connectionTimeoutMillis: 5000,
-      query_timeout: 30000,
-      statement_timeout: 30000,
-      idle_in_transaction_session_timeout: 30000
-    }
-  },
-  // Configuração 4: Direta com timeout curto
-  {
-    name: 'Conexão Direta (Timeout Curto)',
-    config: {
-      host: '35.199.101.38',
-      port: 5432,
-      database: 'liberdade-medica',
-      user: 'vinilean',
-      password: '-Infra55LM-',
-      ssl: false,
-      connectionTimeoutMillis: 8000,
-      query_timeout: 15000,
-      statement_timeout: 15000,
-      idle_in_transaction_session_timeout: 15000
-    }
-  }
-];
+// CONFIGURAÇÃO POSTGRESQL SIMPLES (SEM SSL)
+const dbConfig = {
+  host: '35.199.101.38',
+  port: 5432,
+  database: 'liberdade-medica',
+  user: 'vinilean',
+  password: '-Infra55LM-',
+  ssl: false, // SSL EXPLICITAMENTE DESABILITADO
+  connectionTimeoutMillis: 30000, // 30 segundos
+  query_timeout: 60000, // 60 segundos
+  statement_timeout: 60000, // 60 segundos
+  idle_in_transaction_session_timeout: 60000 // 60 segundos
+};
 
 // Configuração do Backblaze B2
 const b2Config = {
@@ -134,7 +79,6 @@ const ADMIN_CREDENTIALS = {
 // Cliente PostgreSQL
 let pgClient = null;
 let dbConnected = false;
-let currentDbConfig = null;
 
 // Middlewares de segurança
 app.use(helmet({
@@ -206,81 +150,71 @@ function requireAuth(req, res, next) {
   }
 }
 
-// FUNÇÃO PARA TENTAR MÚLTIPLAS CONEXÕES POSTGRESQL
+// FUNÇÃO SIMPLES PARA CONECTAR POSTGRESQL
 async function connectPostgreSQL() {
-  console.log('🔄 Tentando conectar ao PostgreSQL...');
-  console.log('📋 Testando múltiplas configurações de conexão...');
+  console.log('🔄 Conectando ao PostgreSQL...');
+  console.log('📍 Host:', dbConfig.host + ':' + dbConfig.port);
+  console.log('📊 Database:', dbConfig.database);
+  console.log('👤 User:', dbConfig.user);
+  console.log('🔐 SSL:', dbConfig.ssl ? 'HABILITADO' : 'DESABILITADO');
+  console.log('⏱️ Timeout:', dbConfig.connectionTimeoutMillis + 'ms');
   console.log();
 
-  for (let i = 0; i < DB_CONFIGS.length; i++) {
-    const { name, config } = DB_CONFIGS[i];
+  try {
+    pgClient = new Client(dbConfig);
     
-    console.log(`🔍 Tentativa ${i + 1}/${DB_CONFIGS.length}: ${name}`);
-    console.log(`📍 Host: ${config.host}:${config.port}`);
-    console.log(`📊 Database: ${config.database}`);
-    console.log(`⏱️ Timeout: ${config.connectionTimeoutMillis}ms`);
-    console.log(`🔐 SSL: DESABILITADO`);
+    console.log('🔄 Estabelecendo conexão...');
+    await pgClient.connect();
     
-    try {
-      const testClient = new Client(config);
+    console.log('✅ Conexão estabelecida!');
+    
+    // Testar query básica
+    const result = await pgClient.query('SELECT version()');
+    console.log('📊 PostgreSQL Version:', result.rows[0].version.split(' ')[0], result.rows[0].version.split(' ')[1]);
+    
+    // Verificar tabela
+    const tableCheck = await pgClient.query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'blog_artigos'
+    `);
+    
+    if (tableCheck.rows[0].count > 0) {
+      console.log('✅ Tabela blog_artigos encontrada');
       
-      // Tentar conectar
-      await testClient.connect();
+      const countResult = await pgClient.query('SELECT COUNT(*) as total FROM public.blog_artigos');
+      console.log('📄 Artigos existentes:', countResult.rows[0].total);
       
-      // Testar query básica
-      const result = await testClient.query('SELECT version()');
-      console.log('✅ CONEXÃO ESTABELECIDA!');
-      console.log('📊 Versão:', result.rows[0].version.split(' ')[0], result.rows[0].version.split(' ')[1]);
+      dbConnected = true;
       
-      // Verificar tabela
-      const tableCheck = await testClient.query(`
-        SELECT COUNT(*) as count 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'blog_artigos'
-      `);
-      
-      if (tableCheck.rows[0].count > 0) {
-        console.log('✅ Tabela blog_artigos encontrada');
-        
-        const countResult = await testClient.query('SELECT COUNT(*) as total FROM public.blog_artigos');
-        console.log('📄 Artigos existentes:', countResult.rows[0].total);
-        
-        // Sucesso! Usar esta configuração
-        pgClient = testClient;
-        dbConnected = true;
-        currentDbConfig = { name, config };
-        
-        console.log();
-        console.log('🎉 POSTGRESQL CONECTADO COM SUCESSO!');
-        console.log(`✅ Usando: ${name}`);
-        console.log(`📍 Endpoint: ${config.host}:${config.port}`);
-        console.log();
-        
-        return true;
-      } else {
-        console.log('⚠️ Tabela blog_artigos não encontrada');
-        await testClient.end();
-      }
-      
-    } catch (error) {
-      console.log(`❌ Falha: ${error.message}`);
       console.log();
+      console.log('🎉 POSTGRESQL CONECTADO COM SUCESSO!');
+      console.log('📍 Endpoint:', dbConfig.host + ':' + dbConfig.port);
+      console.log('🔐 SSL: DESABILITADO (conforme solicitado)');
+      console.log();
+      
+      return true;
+    } else {
+      console.log('⚠️ Tabela blog_artigos não encontrada');
+      throw new Error('Tabela não encontrada');
     }
+    
+  } catch (error) {
+    console.log('❌ ERRO NA CONEXÃO POSTGRESQL:', error.message);
+    console.log();
+    console.log('💡 POSSÍVEIS SOLUÇÕES:');
+    console.log('1. Verificar se o servidor PostgreSQL está rodando');
+    console.log('2. Verificar firewall/rede corporativa');
+    console.log('3. Tentar túnel SSH:');
+    console.log('   ssh -L 5433:localhost:5432 vinilean@35.199.101.38');
+    console.log('4. Verificar credenciais');
+    console.log();
+    
+    pgClient = null;
+    dbConnected = false;
+    return false;
   }
-  
-  console.log('❌ TODAS AS TENTATIVAS DE CONEXÃO FALHARAM!');
-  console.log();
-  console.log('💡 SOLUÇÕES POSSÍVEIS:');
-  console.log('1. Verificar se o servidor PostgreSQL está rodando');
-  console.log('2. Verificar firewall/rede corporativa');
-  console.log('3. Configurar túnel SSH:');
-  console.log('   ssh -L 5433:localhost:5432 vinilean@35.199.101.38');
-  console.log('4. Verificar credenciais no arquivo .env');
-  console.log('5. Contatar administrador do servidor');
-  console.log();
-  
-  return false;
 }
 
 // Função para fazer upload de imagem para Backblaze B2
@@ -297,7 +231,7 @@ async function uploadImageToB2(file, filename) {
       ACL: 'public-read'
     };
 
-    console.log('🔄 Fazendo upload para Backblaze B2:', uniqueFilename);
+    console.log('🔄 Upload para Backblaze B2:', uniqueFilename);
     
     const result = await s3.upload(uploadParams).promise();
     
@@ -323,7 +257,7 @@ app.post('/blog-adm/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
-    console.log('🔐 Tentativa de login:', { username, timestamp: new Date().toISOString() });
+    console.log('🔐 Login:', { username, timestamp: new Date().toISOString() });
     
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       req.session.authenticated = true;
@@ -335,8 +269,7 @@ app.post('/blog-adm/api/login', async (req, res) => {
         success: true,
         message: 'Login realizado com sucesso!',
         user: { username },
-        database: dbConnected ? 'PostgreSQL Conectado' : 'PostgreSQL Desconectado',
-        connection: currentDbConfig ? currentDbConfig.name : 'Nenhuma'
+        database: dbConnected ? 'PostgreSQL Conectado (SSL Desabilitado)' : 'PostgreSQL Desconectado'
       });
     } else {
       console.log('❌ Credenciais inválidas:', username);
@@ -378,7 +311,7 @@ app.get('/blog-adm/api/auth-status', (req, res) => {
     authenticated: !!(req.session && req.session.authenticated),
     username: req.session ? req.session.username : null,
     database: dbConnected ? 'connected' : 'disconnected',
-    connection: currentDbConfig ? currentDbConfig.name : null
+    ssl: 'disabled'
   });
 });
 
@@ -388,7 +321,7 @@ app.get('/blog-adm/api/health', requireAuth, (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     postgresql: dbConnected ? 'connected' : 'disconnected',
-    connection: currentDbConfig ? currentDbConfig.name : null,
+    ssl: 'disabled',
     session: req.session.username
   });
 });
@@ -398,9 +331,9 @@ app.get('/blog-adm/api/test-connection', requireAuth, async (req, res) => {
     if (!pgClient || !dbConnected) {
       return res.json({
         success: false,
-        message: '❌ PostgreSQL desconectado - Reinicie o servidor para tentar reconectar',
+        message: '❌ PostgreSQL desconectado - Reinicie o servidor',
         mode: 'disconnected',
-        connection: null
+        ssl: 'disabled'
       });
     }
 
@@ -408,11 +341,11 @@ app.get('/blog-adm/api/test-connection', requireAuth, async (req, res) => {
     
     res.json({
       success: true,
-      message: '✅ PostgreSQL conectado - dados salvos no banco',
+      message: '✅ PostgreSQL conectado (SSL desabilitado)',
       mode: 'postgresql',
       status: 'connected',
-      connection: currentDbConfig.name,
-      endpoint: `${currentDbConfig.config.host}:${currentDbConfig.config.port}`,
+      ssl: 'disabled',
+      endpoint: `${dbConfig.host}:${dbConfig.port}`,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -435,7 +368,7 @@ app.post('/blog-adm/api/upload-image', requireAuth, upload.single('image'), asyn
       });
     }
 
-    console.log('📷 Nova requisição de upload de imagem:', {
+    console.log('📷 Upload de imagem:', {
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
@@ -466,8 +399,7 @@ app.get('/blog-adm/api/articles', requireAuth, async (req, res) => {
       return res.status(500).json({
         success: false,
         message: 'PostgreSQL desconectado. Reinicie o servidor.',
-        articles: [],
-        connection: null
+        articles: []
       });
     }
 
@@ -498,7 +430,7 @@ app.get('/blog-adm/api/articles', requireAuth, async (req, res) => {
       success: true,
       articles: articles,
       total: articles.length,
-      connection: currentDbConfig.name
+      ssl: 'disabled'
     });
 
   } catch (error) {
@@ -517,43 +449,40 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
     if (!pgClient || !dbConnected) {
       return res.status(500).json({
         success: false,
-        message: '❌ ERRO CRÍTICO: PostgreSQL desconectado! Reinicie o servidor para reconectar.',
-        connection: null
+        message: '❌ ERRO: PostgreSQL desconectado! Reinicie o servidor.'
       });
     }
 
     const { titulo, categoria, autor, coautor, resumo, destaque, imagem_principal, content } = req.body;
 
-    console.log('📝 NOVA REQUISIÇÃO DE CRIAÇÃO DE ARTIGO:');
-    console.log('==========================================');
-    console.log('📍 Conexão:', currentDbConfig.name);
-    console.log('📊 Endpoint:', `${currentDbConfig.config.host}:${currentDbConfig.config.port}`);
+    console.log('📝 CRIANDO ARTIGO NO POSTGRESQL:');
+    console.log('===============================');
     console.log('👤 Usuário:', req.session.username);
     console.log('📝 Título:', titulo ? titulo.substring(0, 50) + '...' : 'N/A');
     console.log('📂 Categoria:', categoria || 'N/A');
     console.log('👨‍⚕️ Autor:', autor || 'N/A');
     console.log('👥 Co-autor:', coautor || 'N/A');
-    console.log('📄 Resumo:', resumo ? resumo.substring(0, 50) + '...' : 'N/A');
     console.log('⭐ Destaque:', destaque || false);
     console.log('🖼️ Imagem:', imagem_principal ? 'Sim' : 'Não');
-    console.log('📏 Conteúdo:', content ? content.length + ' caracteres' : '0');
-    console.log('==========================================');
+    console.log('📏 Conteúdo:', content ? content.length + ' chars' : '0');
+    console.log('🔐 SSL: DESABILITADO');
+    console.log('===============================');
 
-    // Validação rigorosa
+    // Validação
     const errors = [];
     if (!titulo || titulo.trim().length === 0) errors.push('Título é obrigatório');
     if (!categoria || categoria.trim().length === 0) errors.push('Categoria é obrigatória');
     if (!autor || autor.trim().length === 0) errors.push('Autor é obrigatório');
     if (!content || content.trim().length === 0) errors.push('Conteúdo é obrigatório');
     
-    if (titulo && titulo.length > 255) errors.push('Título muito longo (máximo 255 caracteres)');
-    if (categoria && categoria.length > 100) errors.push('Categoria muito longa (máximo 100 caracteres)');
-    if (autor && autor.length > 100) errors.push('Nome do autor muito longo (máximo 100 caracteres)');
-    if (coautor && coautor.length > 100) errors.push('Nome do co-autor muito longo (máximo 100 caracteres)');
-    if (resumo && resumo.length > 500) errors.push('Resumo muito longo (máximo 500 caracteres)');
+    if (titulo && titulo.length > 255) errors.push('Título muito longo');
+    if (categoria && categoria.length > 100) errors.push('Categoria muito longa');
+    if (autor && autor.length > 100) errors.push('Nome do autor muito longo');
+    if (coautor && coautor.length > 100) errors.push('Nome do co-autor muito longo');
+    if (resumo && resumo.length > 500) errors.push('Resumo muito longo');
 
     if (errors.length > 0) {
-      console.log('❌ VALIDAÇÃO FALHOU:', errors);
+      console.log('❌ Validação falhou:', errors);
       return res.status(400).json({
         success: false,
         message: 'Dados inválidos: ' + errors.join(', '),
@@ -597,16 +526,8 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
     const finalSlug = await ensureUniqueSlug(slug);
     const now = new Date();
 
-    console.log('🔄 INSERINDO ARTIGO NO POSTGRESQL:');
-    console.log('==================================');
-    console.log('📝 Título:', titulo.trim());
+    console.log('💾 Inserindo no PostgreSQL...');
     console.log('🔗 Slug:', finalSlug);
-    console.log('📂 Categoria:', categoria.trim());
-    console.log('👨‍⚕️ Autor:', autor.trim());
-    console.log('👥 Co-autor:', coautor ? coautor.trim() : 'N/A');
-    console.log('⭐ Destaque:', destaque || false);
-    console.log('🖼️ Imagem:', imagem_principal || 'N/A');
-    console.log('==================================');
 
     const insertQuery = `
       INSERT INTO public.blog_artigos 
@@ -625,20 +546,19 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
       resumo ? resumo.trim() : null,
       destaque || false,
       imagem_principal || null,
-      now.toISOString().split('T')[0], // data_criacao
-      now.toISOString().split('T')[0], // data_atualizacao
+      now.toISOString().split('T')[0],
+      now.toISOString().split('T')[0],
       content.trim(),
       'publicado',
-      now.toISOString(), // created_at
-      now.toISOString()  // updated_at
+      now.toISOString(),
+      now.toISOString()
     ];
 
-    console.log('💾 Executando INSERT no PostgreSQL...');
     const result = await pgClient.query(insertQuery, values);
     const insertedArticle = result.rows[0];
     
-    console.log('🎉 ARTIGO INSERIDO COM SUCESSO NO POSTGRESQL!');
-    console.log('=============================================');
+    console.log('🎉 ARTIGO INSERIDO COM SUCESSO!');
+    console.log('===============================');
     console.log('🆔 ID:', insertedArticle.id);
     console.log('🔗 Slug:', insertedArticle.slug);
     console.log('📝 Título:', insertedArticle.titulo);
@@ -647,17 +567,17 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
     console.log('👥 Co-autor:', insertedArticle.coautor || 'N/A');
     console.log('⭐ Destaque:', insertedArticle.destaque);
     console.log('🖼️ Imagem:', insertedArticle.imagem_principal || 'N/A');
-    console.log('📅 Criado em:', insertedArticle.created_at);
-    console.log('📍 Conexão:', currentDbConfig.name);
-    console.log('=============================================');
+    console.log('📅 Criado:', insertedArticle.created_at);
+    console.log('🔐 SSL: DESABILITADO');
+    console.log('===============================');
 
     res.json({
       success: true,
       id: insertedArticle.id,
       slug: insertedArticle.slug,
-      message: '🎉 ARTIGO PUBLICADO NO BLOG COM SUCESSO!',
+      message: '🎉 ARTIGO PUBLICADO COM SUCESSO!',
       mode: 'postgresql',
-      connection: currentDbConfig.name,
+      ssl: 'disabled',
       timestamp: now.toISOString(),
       article: {
         id: insertedArticle.id,
@@ -672,14 +592,12 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ ERRO CRÍTICO AO CRIAR ARTIGO:', error.message);
-    console.error('🔍 Stack trace:', error.stack);
-    console.error('📍 Conexão:', currentDbConfig ? currentDbConfig.name : 'Nenhuma');
+    console.error('❌ ERRO AO CRIAR ARTIGO:', error.message);
+    console.error('🔍 Stack:', error.stack);
     
     res.status(500).json({
       success: false,
-      message: 'ERRO CRÍTICO ao publicar artigo: ' + error.message,
-      connection: currentDbConfig ? currentDbConfig.name : null
+      message: 'ERRO ao publicar artigo: ' + error.message
     });
   }
 });
@@ -700,42 +618,36 @@ app.get('/', (req, res) => {
 // Inicializar servidor
 async function startServer() {
   try {
-    console.log('🚀 INICIANDO SERVIDOR COM FOCO EM POSTGRESQL...');
+    console.log('🚀 INICIANDO SERVIDOR SIMPLES (SEM SSL)...');
     console.log();
     
-    // PRIORIDADE MÁXIMA: Conectar ao PostgreSQL
+    // Conectar ao PostgreSQL
     const connected = await connectPostgreSQL();
-    
-    if (!connected) {
-      console.log('⚠️ ATENÇÃO: Servidor iniciará SEM conexão PostgreSQL!');
-      console.log('❌ ARTIGOS NÃO PODERÃO SER SALVOS NO BANCO!');
-      console.log();
-    }
     
     // Iniciar servidor
     app.listen(PORT, () => {
-      console.log('✅ Servidor web iniciado com sucesso!');
+      console.log('✅ Servidor web iniciado!');
       console.log(`🌐 URL: http://localhost:${PORT}/blog-adm`);
       console.log(`🔐 Login: ${ADMIN_CREDENTIALS.username} / ${ADMIN_CREDENTIALS.password}`);
       console.log();
       
       if (dbConnected) {
         console.log('🎉 STATUS: POSTGRESQL CONECTADO!');
-        console.log(`✅ Conexão: ${currentDbConfig.name}`);
-        console.log(`📍 Endpoint: ${currentDbConfig.config.host}:${currentDbConfig.config.port}`);
-        console.log('💾 Artigos serão salvos no banco de dados!');
+        console.log(`📍 Endpoint: ${dbConfig.host}:${dbConfig.port}`);
+        console.log('🔐 SSL: DESABILITADO (conforme solicitado)');
+        console.log('💾 Artigos serão salvos no banco!');
       } else {
         console.log('❌ STATUS: POSTGRESQL DESCONECTADO!');
         console.log('⚠️ Artigos NÃO serão salvos!');
-        console.log('💡 Reinicie o servidor para tentar reconectar');
       }
       
       console.log();
-      console.log('📋 Funcionalidades disponíveis:');
+      console.log('📋 Funcionalidades:');
       console.log('   ✅ Sistema de autenticação');
-      console.log('   ✅ Upload de imagens para Backblaze B2');
+      console.log('   ✅ Upload de imagens (Backblaze B2)');
       console.log('   ✅ Interface web responsiva');
-      console.log(`   ${dbConnected ? '✅' : '❌'} Criação de artigos no PostgreSQL`);
+      console.log(`   ${dbConnected ? '✅' : '❌'} Criação de artigos (PostgreSQL)`);
+      console.log('   ✅ SSL desabilitado');
       console.log();
     });
   } catch (error) {
