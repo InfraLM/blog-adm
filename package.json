@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:fallback": "node src/server-fallback.js",
     "dev": "nodemon src/server.js",
+    "dev:fallback": "nodemon src/server-fallback.js",
     "build": "npm run build:static",
     "build:static": "node scripts/build-static.js",
     "test": "node test/test-server.js"
