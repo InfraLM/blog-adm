@@ -516,9 +516,9 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9\s-]/g, '')
         .trim()
-        .replace(/\s+/g, '_')
-        .replace(/_+/g, '_')
-        .replace(/^_|_$/g, '');
+        .replace(/\s+/g, '-')  // Alterado de '_' para '-'
+        .replace(/-+/g, '-')   // Alterado de '_' para '-'
+        .replace(/^-|-$/g, ''); // Alterado de '_' para '-'
     }
 
     const baseSlug = generateSlug(titulo.trim());
@@ -541,7 +541,7 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
           }
           
           counter++;
-          slug = `${baseSlug}_${counter}`;
+          slug = `${baseSlug}-${counter}`; // Alterado de '_' para '-'
         }
       }
 
@@ -606,7 +606,7 @@ app.post('/blog-adm/api/articles', requireAuth, async (req, res) => {
         
         while (localArticles.some(article => article.slug === slug)) {
           counter++;
-          slug = `${baseSlug}_${counter}`;
+          slug = `${baseSlug}-${counter}`; // Alterado de '_' para '-'
         }
         
         return slug;
